@@ -1,0 +1,66 @@
+name: Deploy to GCP
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      REGION: ${{ secrets.REGION }}
+      IMAGE: gcr.io/${{ secrets.GCP_PROJECT_ID }}/mcp-admin:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Write sa.json from GitHub secret
+        run: echo '${{ secrets.GCP_SA_KEY }}' > sa.json
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Configure Docker for GCP
+        run: gcloud auth configure-docker --quiet
+
+      - name: Build & push image
+        run: |
+          docker build \
+            --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+            --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) \
+            -t $IMAGE .
+          docker push $IMAGE
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy mcp-admin \
+            --image $IMAGE \
+            --region $REGION \
+            --platform managed \
+            --allow-unauthenticated \
+            --min-instances=0 \
+            --max-instances=2 \
+            --port=8080 \
+            --timeout=300 \
+            --service-account=${{ secrets.GCP_SA_EMAIL }} \
+            --set-env-vars="^|^GOOGLE_CLIENT_ID=${{ secrets.MCP_ADMIN_GOOGLE_CLIENT_ID }}|GOOGLE_CLIENT_SECRET=${{ secrets.MCP_ADMIN_GOOGLE_CLIENT_SECRET }}|BASE_URL=${{ secrets.MCP_ADMIN_BASE_URL }}|SESSION_SECRET=${{ secrets.MCP_ADMIN_SESSION_SECRET }}|ADMIN_EMAILS=${{ secrets.MCP_ADMIN_EMAILS }}|MCP_SERVERS=rr-mcp,ceipal-mcp,helpjuice-mcp,qb-mcp,nexus-mcp"
+
+      - name: Route traffic to latest
+        run: |
+          gcloud run services update-traffic mcp-admin --region $REGION --to-latest
+
+      - name: Cleanup old revisions
+        run: |
+          gcloud run revisions list \
+            --service mcp-admin \
+            --region $REGION \
+            --format="value(name)" \
+            --sort-by="~metadata.creationTimestamp" \
+            | tail -n +4 \
+            | xargs -r -I {} gcloud run revisions delete {} --region $REGION --quiet || true

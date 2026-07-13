@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Access · MCP Access{% endblock %}
+{% block body %}
+<header class="app-header">
+  <div class="brand">
+    <span class="brand-mark">MA</span>
+    MCP Access
+  </div>
+  <div class="account">
+    <span class="account-email">{{ admin }}</span>
+    <a class="btn btn-secondary" href="/logout">Sign out</a>
+  </div>
+</header>
+
+<main>
+  <h1 class="page-title">User access</h1>
+  <p class="page-subtitle">Grant or revoke access to each MCP server, per user.</p>
+
+  <form class="add-user-form" method="post" action="/users/add">
+    <input class="input" type="email" name="email" placeholder="user@cynetcorp.com" required autocomplete="off">
+    <button class="btn btn-primary" style="width:auto" type="submit">Add user</button>
+  </form>
+
+  <div class="table-wrap">
+    {% if users %}
+    <table>
+      <thead>
+        <tr>
+          <th>User</th>
+          <th class="col-all">All</th>
+          {% for s in servers %}<th>{{ s }}</th>{% endfor %}
+          <th class="col-actions"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr data-row="{{ u.email }}">
+          <td>
+            <div class="user-cell">
+              <span class="avatar">{{ u.email[0]|upper }}</span>
+              {{ u.email }}
+            </div>
+          </td>
+          <td>
+            <input type="checkbox" data-email="{{ u.email }}" data-server="all"
+                   {% if 'all' in u.access %}checked{% endif %} onchange="toggleAccess(this)">
+          </td>
+          {% for s in servers %}
+          <td>
+            <input type="checkbox" data-email="{{ u.email }}" data-server="{{ s }}"
+                   {% if s in u.access or 'all' in u.access %}checked{% endif %}
+                   {% if 'all' in u.access %}disabled{% endif %} onchange="toggleAccess(this)">
+          </td>
+          {% endfor %}
+          <td class="col-actions">
+            <form method="post" action="/users/{{ u.email }}/delete">
+              <button class="btn btn-danger" type="submit">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">No users yet. Add one above to grant access to an MCP server.</div>
+    {% endif %}
+  </div>
+</main>
+
+<div class="save-flash" id="save-flash">Saved</div>
+
+<script>
+  let flashTimer;
+  function showFlash(text) {
+    const el = document.getElementById('save-flash');
+    el.textContent = text;
+    el.classList.add('visible');
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => el.classList.remove('visible'), 1600);
+  }
+
+  function toggleAccess(checkbox) {
+    const { email, server } = checkbox.dataset;
+    const checked = checkbox.checked;
+    const row = document.querySelector(`tr[data-row="${CSS.escape(email)}"]`);
+    const allBox = row.querySelector('[data-server="all"]');
+    const serverBoxes = row.querySelectorAll('td input[type=checkbox]:not([data-server="all"])');
+
+    checkbox.disabled = true;
+    fetch(`/users/${encodeURIComponent(email)}/access/toggle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `server=${encodeURIComponent(server)}&checked=${checked}`,
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('request failed');
+        return res.json();
+      })
+      .then((data) => {
+        const access = data.access || [];
+        const grantsAll = access.includes('all');
+        allBox.checked = grantsAll;
+        serverBoxes.forEach((box) => {
+          box.checked = grantsAll || access.includes(box.dataset.server);
+          box.disabled = grantsAll;
+        });
+        showFlash('Saved');
+      })
+      .catch(() => {
+        checkbox.checked = !checked;
+        showFlash('Could not save — try again');
+      })
+      .finally(() => {
+        checkbox.disabled = false;
+      });
+  }
+</script>
+{% endblock %}
