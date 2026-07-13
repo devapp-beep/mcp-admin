@@ -8,7 +8,6 @@ load_dotenv()
 if os.getenv("ENV") != "production":
     os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
 
-import jinja2
 from authlib.integrations.starlette_client import OAuth
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -35,13 +34,7 @@ COLLECTION = os.getenv("FIRESTORE_COLLECTION", "mcp_access")
 app = FastAPI(title="MCP Access Admin")
 app.add_middleware(SessionMiddleware, secret_key=os.environ["SESSION_SECRET"])
 app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(
-    env=jinja2.Environment(
-        loader=jinja2.FileSystemLoader("templates"),
-        autoescape=jinja2.select_autoescape(),
-        cache_size=0,
-    )
-)
+templates = Jinja2Templates(directory="templates")
 
 oauth = OAuth()
 oauth.register(
@@ -70,11 +63,12 @@ def require_admin(request: Request) -> str:
 async def index(request: Request):
     email = current_email(request)
     if not email:
-        return templates.TemplateResponse("login.html", {"request": request})
+        return templates.TemplateResponse(request, "login.html")
     if email not in ADMIN_EMAILS:
         return templates.TemplateResponse(
+            request,
             "login.html",
-            {"request": request, "error": f"{email} is signed in but isn't an admin."},
+            {"error": f"{email} is signed in but isn't an admin."},
         )
 
     docs = db.collection(COLLECTION).stream()
@@ -84,8 +78,9 @@ async def index(request: Request):
         users.append({"email": doc.id, "access": data.get("access", [])})
     users.sort(key=lambda u: u["email"])
     return templates.TemplateResponse(
+        request,
         "dashboard.html",
-        {"request": request, "admin": email, "users": users, "servers": MCP_SERVERS},
+        {"admin": email, "users": users, "servers": MCP_SERVERS},
     )
 
 
