@@ -90,7 +90,7 @@ async def index(request: Request):
 @app.get("/login")
 async def login(request: Request):
     redirect_uri = os.environ["BASE_URL"].rstrip("/") + "/auth/callback"
-    return await oauth.google.authorize_redirect(request, redirect_uri)
+    return await oauth.google.authorize_redirect(request, redirect_uri, prompt="select_account")
 
 
 @app.get("/auth/callback")
@@ -107,7 +107,7 @@ async def auth_callback(request: Request):
 @app.get("/logout")
 async def logout(request: Request):
     request.session.clear()
-    return RedirectResponse(url="/login")
+    return RedirectResponse(url="/")
 
 
 @app.post("/users/add")
