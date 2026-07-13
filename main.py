@@ -77,11 +77,14 @@ async def index(request: Request):
         data = doc.to_dict() or {}
         users.append({"email": doc.id, "access": data.get("access", [])})
     users.sort(key=lambda u: u["email"])
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request,
         "dashboard.html",
         {"admin": email, "users": users, "servers": MCP_SERVERS},
     )
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    return response
 
 
 @app.get("/login")
