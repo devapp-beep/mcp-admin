@@ -1,6 +1,13 @@
 import logging
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
+if os.getenv("ENV") != "production":
+    os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
+
 from authlib.integrations.starlette_client import OAuth
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
