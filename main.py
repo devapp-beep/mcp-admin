@@ -8,6 +8,7 @@ load_dotenv()
 if os.getenv("ENV") != "production":
     os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
 
+import jinja2
 from authlib.integrations.starlette_client import OAuth
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -34,7 +35,13 @@ COLLECTION = os.getenv("FIRESTORE_COLLECTION", "mcp_access")
 app = FastAPI(title="MCP Access Admin")
 app.add_middleware(SessionMiddleware, secret_key=os.environ["SESSION_SECRET"])
 app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(
+    env=jinja2.Environment(
+        loader=jinja2.FileSystemLoader("templates"),
+        autoescape=jinja2.select_autoescape(),
+        cache_size=0,
+    )
+)
 
 oauth = OAuth()
 oauth.register(
