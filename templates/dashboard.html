@@ -104,7 +104,7 @@
 
   function applyAccessToRow(row, access) {
     const grantsAll = access.includes('all');
-    row.querySelectorAll('td input[type=checkbox]').forEach((box) => {
+    row.querySelectorAll('input[type=checkbox]').forEach((box) => {
       const { server, tool } = box.dataset;
       if (server === 'all') {
         box.checked = grantsAll;
@@ -119,7 +119,58 @@
         box.disabled = grantsAll || serverGranted;
       }
     });
+    // Refresh each server's "n/m" badge on the tools button.
+    row.querySelectorAll('.server-cell').forEach((cell) => {
+      const panel = cell.querySelector('.tool-panel');
+      const btn = cell.querySelector('.tools-toggle');
+      if (!panel || !btn) return;
+      const boxes = [...panel.querySelectorAll('input[type=checkbox]')];
+      const server = boxes[0]?.dataset.server;
+      const serverGranted = grantsAll || access.includes(server);
+      let badge = btn.querySelector('.tools-count');
+      const n = boxes.filter((b) => b.checked).length;
+      if (serverGranted || n === 0) {
+        if (badge) badge.remove();
+      } else {
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'tools-count';
+          btn.appendChild(badge);
+        }
+        badge.textContent = `${n}/${boxes.length}`;
+      }
+    });
   }
+
+  // Position a fixed-overlay tool panel under its button, escaping the table's
+  // overflow clip. Only one panel open at a time.
+  let openCell = null;
+  function closePanel() {
+    if (openCell) {
+      openCell.classList.remove('panel-open');
+      openCell = null;
+    }
+  }
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tools-toggle');
+    if (btn) {
+      const cell = btn.closest('.server-cell');
+      const panel = cell.querySelector('.tool-panel');
+      const wasOpen = cell === openCell;
+      closePanel();
+      if (!wasOpen) {
+        const r = btn.getBoundingClientRect();
+        panel.style.top = `${r.bottom + 6}px`;
+        panel.style.left = `${r.left}px`;
+        cell.classList.add('panel-open');
+        openCell = cell;
+      }
+      return;
+    }
+    if (!e.target.closest('.tool-panel')) closePanel();
+  });
+  window.addEventListener('resize', closePanel);
+  document.querySelector('.table-wrap')?.addEventListener('scroll', closePanel);
 
   function toggleAccess(checkbox) {
     const { email, server, tool } = checkbox.dataset;
