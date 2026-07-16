@@ -47,9 +47,27 @@
           </td>
           {% for s in servers %}
           <td>
-            <input type="checkbox" data-email="{{ u.email }}" data-server="{{ s }}"
-                   {% if s in u.access or 'all' in u.access %}checked{% endif %}
-                   {% if 'all' in u.access %}disabled{% endif %} onchange="toggleAccess(this)">
+            <div class="server-cell">
+              <input type="checkbox" data-email="{{ u.email }}" data-server="{{ s }}"
+                     {% if s in u.access or 'all' in u.access %}checked{% endif %}
+                     {% if 'all' in u.access %}disabled{% endif %} onchange="toggleAccess(this)">
+              {% if s in server_tools %}
+              <details class="tool-details">
+                <summary title="Restrict to specific tools">tools</summary>
+                <div class="tool-list">
+                  {% for t in server_tools[s] %}
+                  <label class="tool-item">
+                    <input type="checkbox" data-email="{{ u.email }}" data-server="{{ s }}" data-tool="{{ t }}"
+                           {% if t in u.tool_access.get(s, []) %}checked{% endif %}
+                           {% if 'all' in u.access or s in u.access %}disabled{% endif %}
+                           onchange="toggleAccess(this)">
+                    {{ t }}
+                  </label>
+                  {% endfor %}
+                </div>
+              </details>
+              {% endif %}
+            </div>
           </td>
           {% endfor %}
           <td class="col-actions">
@@ -79,31 +97,45 @@
     flashTimer = setTimeout(() => el.classList.remove('visible'), 1600);
   }
 
+  function applyAccessToRow(row, access) {
+    const grantsAll = access.includes('all');
+    row.querySelectorAll('td input[type=checkbox]').forEach((box) => {
+      const { server, tool } = box.dataset;
+      if (server === 'all') {
+        box.checked = grantsAll;
+        return;
+      }
+      const serverGranted = grantsAll || access.includes(server);
+      if (!tool) {
+        box.checked = serverGranted;
+        box.disabled = grantsAll;
+      } else {
+        box.checked = serverGranted || access.includes(`${server}:${tool}`);
+        box.disabled = grantsAll || serverGranted;
+      }
+    });
+  }
+
   function toggleAccess(checkbox) {
-    const { email, server } = checkbox.dataset;
+    const { email, server, tool } = checkbox.dataset;
     const checked = checkbox.checked;
     const row = document.querySelector(`tr[data-row="${CSS.escape(email)}"]`);
-    const allBox = row.querySelector('[data-server="all"]');
-    const serverBoxes = row.querySelectorAll('td input[type=checkbox]:not([data-server="all"])');
 
     checkbox.disabled = true;
+    let body = `server=${encodeURIComponent(server)}&checked=${checked}`;
+    if (tool) body += `&tool=${encodeURIComponent(tool)}`;
+
     fetch(`/users/${encodeURIComponent(email)}/access/toggle`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `server=${encodeURIComponent(server)}&checked=${checked}`,
+      body,
     })
       .then((res) => {
         if (!res.ok) throw new Error('request failed');
         return res.json();
       })
       .then((data) => {
-        const access = data.access || [];
-        const grantsAll = access.includes('all');
-        allBox.checked = grantsAll;
-        serverBoxes.forEach((box) => {
-          box.checked = grantsAll || access.includes(box.dataset.server);
-          box.disabled = grantsAll;
-        });
+        applyAccessToRow(row, data.access || []);
         showFlash('Saved');
       })
       .catch(() => {
