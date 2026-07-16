@@ -52,20 +52,25 @@
                      {% if s in u.access or 'all' in u.access %}checked{% endif %}
                      {% if 'all' in u.access %}disabled{% endif %} onchange="toggleAccess(this)">
               {% if s in server_tools %}
-              <details class="tool-details">
-                <summary title="Restrict to specific tools">tools</summary>
-                <div class="tool-list">
-                  {% for t in server_tools[s] %}
-                  <label class="tool-item">
-                    <input type="checkbox" data-email="{{ u.email }}" data-server="{{ s }}" data-tool="{{ t }}"
-                           {% if t in u.tool_access.get(s, []) %}checked{% endif %}
-                           {% if 'all' in u.access or s in u.access %}disabled{% endif %}
-                           onchange="toggleAccess(this)">
-                    {{ t }}
-                  </label>
-                  {% endfor %}
-                </div>
-              </details>
+              <button type="button" class="tools-toggle" title="Restrict to specific tools">
+                tools
+                {% set granted = u.tool_access.get(s, []) %}
+                {% if granted and s not in u.access and 'all' not in u.access %}
+                <span class="tools-count">{{ granted|length }}/{{ server_tools[s]|length }}</span>
+                {% endif %}
+              </button>
+              <div class="tool-panel">
+                <div class="tool-panel-title">{{ s }} tools</div>
+                {% for t in server_tools[s] %}
+                <label class="tool-item">
+                  <input type="checkbox" data-email="{{ u.email }}" data-server="{{ s }}" data-tool="{{ t }}"
+                         {% if t in u.tool_access.get(s, []) %}checked{% endif %}
+                         {% if 'all' in u.access or s in u.access %}disabled{% endif %}
+                         onchange="toggleAccess(this)">
+                  {{ t }}
+                </label>
+                {% endfor %}
+              </div>
               {% endif %}
             </div>
           </td>

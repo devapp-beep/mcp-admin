@@ -40,6 +40,8 @@ SERVER_TOOLS: dict[str, list[str]] = {
         "query_cynet_health_canada_run_rate",
         "query_cynet_locum_run_rate",
         "query_cynet_systems_run_rate",
+        "query_cynet_systems_canada_run_rate",
+        "query_egov_solutions_run_rate",
     ],
 }
 

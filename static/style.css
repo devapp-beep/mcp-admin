@@ -341,54 +341,86 @@ input[type="checkbox"]:disabled { cursor: not-allowed; opacity: 0.55; }
 
 .col-actions { width: 1%; white-space: nowrap; }
 
-/* ---- per-server tool expander ------------------------------------------- */
+/* ---- per-server tool restriction --------------------------------------- */
 .server-cell {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  position: relative;
+  gap: 8px;
 }
 
-.tool-details summary {
-  list-style: none;
-  cursor: pointer;
+.tools-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-muted);
   font-size: 11px;
-  color: var(--ink-faint);
-  padding: 2px 4px;
-  border-radius: 4px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 150ms var(--ease-out-expo), border-color 150ms var(--ease-out-expo);
 }
-.tool-details summary::-webkit-details-marker { display: none; }
-.tool-details summary:hover { color: var(--accent); background: var(--accent-wash); }
-.tool-details[open] summary { color: var(--accent); }
+.tools-toggle:hover { color: var(--accent); border-color: var(--accent); }
+.panel-open .tools-toggle { color: var(--accent); border-color: var(--accent); }
 
-.tool-details .tool-list {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  margin-top: 6px;
-  padding: 10px 12px;
+.tools-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Fixed overlay panel — JS sets top/left, so it escapes the table's overflow. */
+.tool-panel {
+  display: none;
+  position: fixed;
+  z-index: 100;
+  min-width: 240px;
+  padding: 8px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 10px;
   box-shadow: var(--shadow-2);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  white-space: nowrap;
   text-align: left;
+}
+.panel-open .tool-panel { display: block; }
+
+.tool-panel-title {
+  padding: 4px 8px 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
 }
 
 .tool-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
   font-weight: 400;
   color: var(--ink);
   cursor: pointer;
+  white-space: nowrap;
 }
+.tool-item:hover { background: var(--surface-2); }
+.tool-item input { flex: none; }
 
 /* ---- empty state ----------------------------------------------------- */
 .empty-state {
