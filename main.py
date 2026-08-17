@@ -59,7 +59,7 @@ oauth.register(
     client_kwargs={"scope": "openid email"},
 )
 
-db = firestore.Client()
+db = firestore.Client(project=os.environ.get("GCP_PROJECT_ID"))
 
 
 def current_email(request: Request) -> str | None:
