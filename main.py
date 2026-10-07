@@ -1,5 +1,6 @@
 import logging
 import os
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -117,7 +118,13 @@ async def index(request: Request):
 
 @app.get("/login")
 async def login(request: Request):
-    redirect_uri = os.environ["BASE_URL"].rstrip("/") + "/auth/callback"
+    base_url = os.environ["BASE_URL"].rstrip("/")
+    # Cloud Run serves the app on more than one hostname. The OAuth state lives
+    # in a host-scoped session cookie and the callback always lands on
+    # BASE_URL, so start the flow on BASE_URL's host or the state won't match.
+    if request.url.hostname != urlparse(base_url).hostname:
+        return RedirectResponse(url=base_url + "/login")
+    redirect_uri = base_url + "/auth/callback"
     return await oauth.google.authorize_redirect(request, redirect_uri, prompt="select_account")
 
 
